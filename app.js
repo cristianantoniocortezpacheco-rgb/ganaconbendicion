@@ -409,4 +409,61 @@ window.deleteSale = async function (id) {
     window.renderAdminDashboard();
   }
   showToast("Compra eliminada");
+
+npm install firebase
+// Import the functions you need from the SDKs you need
+import { initializeApp } from "firebase/app";
+import { getAnalytics } from "firebase/analytics";
+// TODO: Add SDKs for Firebase products that you want to use
+// https://firebase.google.com/docs/web/setup#available-libraries
+
+// Your web app's Firebase configuration
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
+  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
+  projectId: "gana-con-bendicion-ce2c6",
+  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
+  messagingSenderId: "1085701104307",
+  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
+  measurementId: "G-E908T6DZ1W"
+};
+
+// Initialize Firebase
+const app = initializeApp(firebaseConfig);
+const analytics = getAnalytics(app);
+
+
+};<script type="module">
+  // Import the functions you need from the SDKs you need
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
+  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-analytics.js";
+  // TODO: Add SDKs for Firebase products that you want to use
+  // https://firebase.google.com/docs/web/setup#available-libraries
+
+  // Your web app's Firebase configuration
+  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
+  const firebaseConfig = {
+    apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
+    authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
+    projectId: "gana-con-bendicion-ce2c6",
+    storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
+    messagingSenderId: "1085701104307",
+    appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
+    measurementId: "G-E908T6DZ1W"
+  };
+
+  // Initialize Firebase
+  const app = initializeApp(firebaseConfig);
+  const analytics = getAnalytics(app);
+</script>
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
+  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
+  projectId: "gana-con-bendicion-ce2c6",
+  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
+  messagingSenderId: "1085701104307",
+  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
+  measurementId: "G-E908T6DZ1W"
 };
