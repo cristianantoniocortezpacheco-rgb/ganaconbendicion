@@ -8,7 +8,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // =========================================================================
-// 1. PEGA AQUÍ TUS 6 CLAVES DE FIREBASE (Reemplaza los valores entre comillas)
+// 1. CONFIGURACIÓN DE FIREBASE (gana-con-bendicion-ce2c6)
 // =========================================================================
 const firebaseConfig = {
   apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
@@ -19,28 +19,18 @@ const firebaseConfig = {
   appId: "1:1085701104307:web:77d09076ec6f4df579c6c6"
 };
 
-let db = null;
-let auth = null;
-let isFirebaseReady = false;
-
-try {
-  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PEGA_AQUI")) {
-    const app = initializeApp(firebaseConfig);
-    db = getFirestore(app);
-    auth = getAuth(app);
-    isFirebaseReady = true;
-  }
-} catch (e) {
-  console.error("Error iniciando Firebase:", e);
-}
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+const auth = getAuth(app);
 
 // =========================================================================
 // 2. VARIABLES GLOBALES
 // =========================================================================
 const TICKET_PRICE_BS = 570;
 const TOTAL_TICKETS = 10000;
-let allSales = JSON.parse(localStorage.getItem("rifa_ventas_backup") || "[]");
+let allSales = [];
 let occupiedSet = new Set();
+let isCloudConnected = false;
 
 function rebuildOccupiedSet() {
   occupiedSet.clear();
@@ -50,40 +40,33 @@ function rebuildOccupiedSet() {
     }
   });
 }
-rebuildOccupiedSet();
 
 // =========================================================================
-// 3. SINCRONIZACIÓN EN TIEMPO REAL CON FIRESTORE
+// 3. SINCRONIZACIÓN EN TIEMPO REAL CON FIRESTORE (PC Y CELULAR)
 // =========================================================================
-if (isFirebaseReady && db) {
-  onSnapshot(collection(db, "ventas"), (snapshot) => {
-    allSales = [];
-    snapshot.forEach((docSnap) => {
-      allSales.push({ id: docSnap.id, ...docSnap.data() });
-    });
-
-    // Ordenar del más reciente al más antiguo en el navegador
-    allSales.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
-
-    localStorage.setItem("rifa_ventas_backup", JSON.stringify(allSales));
-    rebuildOccupiedSet();
-    updateBadgeStatus(true);
-    updateProgressUI();
-    updateLiveTicker();
-
-    const adminView = document.getElementById("admin-dashboard-view");
-    if (adminView && !adminView.classList.contains("hidden")) {
-      window.renderAdminDashboard();
-    }
-  }, (err) => {
-    console.error("Error de permisos o conexión en Firestore:", err);
-    updateBadgeStatus(false, "Error Permisos");
+onSnapshot(collection(db, "ventas"), (snapshot) => {
+  isCloudConnected = true;
+  allSales = [];
+  snapshot.forEach((docSnap) => {
+    allSales.push({ id: docSnap.id, ...docSnap.data() });
   });
-} else {
-  updateBadgeStatus(false);
+
+  allSales.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+
+  rebuildOccupiedSet();
+  updateBadgeStatus(true);
   updateProgressUI();
   updateLiveTicker();
-}
+
+  const adminView = document.getElementById("admin-dashboard-view");
+  if (adminView && !adminView.classList.contains("hidden")) {
+    window.renderAdminDashboard();
+  }
+}, (err) => {
+  isCloudConnected = false;
+  console.error("Error Firestore:", err.code, err.message);
+  updateBadgeStatus(false, `Error: ${err.code || "Sin conexión"}`);
+});
 
 function updateBadgeStatus(online, customText = null) {
   const badge = document.getElementById("cloud-status-badge");
@@ -92,8 +75,8 @@ function updateBadgeStatus(online, customText = null) {
     badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En Línea`;
     badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
   } else {
-    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> ${customText || "Modo Local"}`;
-    badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30";
+    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-red-400"></span> ${customText || "Desconectado"}`;
+    badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-500/15 text-red-400 border border-red-500/30";
   }
 }
 
@@ -210,13 +193,13 @@ function showToast(msg) {
 }
 
 // =========================================================================
-// 6. PROCESAR COMPRA DE TICKETS
+// 6. PROCESAR COMPRA DE TICKETS EN LA NUBE
 // =========================================================================
 window.submitPurchase = async function (event) {
   event.preventDefault();
   const btn = document.getElementById("submit-purchase-btn");
   btn.disabled = true;
-  btn.textContent = "Generando tickets...";
+  btn.textContent = "Guardando en la nube...";
 
   try {
     const qty = parseInt(document.getElementById("ticket-qty-input").value, 10);
@@ -251,19 +234,10 @@ window.submitPurchase = async function (event) {
       totalBs: qty * TICKET_PRICE_BS,
       status: "pendiente",
       timestampMs: Date.now(),
-      createdAt: isFirebaseReady ? serverTimestamp() : new Date().toISOString()
+      createdAt: serverTimestamp()
     };
 
-    if (isFirebaseReady && db) {
-      await addDoc(collection(db, "ventas"), saleData);
-    } else {
-      saleData.id = "local_" + Date.now();
-      allSales.unshift(saleData);
-      localStorage.setItem("rifa_ventas_backup", JSON.stringify(allSales));
-      rebuildOccupiedSet();
-      updateProgressUI();
-      updateLiveTicker();
-    }
+    await addDoc(collection(db, "ventas"), saleData);
 
     document.getElementById("purchase-form").classList.add("hidden");
     document.getElementById("purchase-receipt").classList.remove("hidden");
@@ -273,10 +247,10 @@ window.submitPurchase = async function (event) {
 
     const msg = encodeURIComponent(`Hola Gana con Bendición, acabo de comprar ${qty} ticket(s).\nNombre: ${name}\nCédula: ${cedulaType}-${cedula}\nRef: ${ref}\nTickets: ${assigned.join(", ")}`);
     document.getElementById("receipt-whatsapp-link").href = `https://wa.me/584125974816?text=${msg}`;
-    showToast("¡Tickets generados con éxito!");
+    showToast("¡Tickets guardados en la nube!");
   } catch (err) {
-    console.error(err);
-    alert("Error al registrar la compra: " + err.message);
+    console.error("Error guardando venta:", err);
+    alert(`No se pudo guardar en Firebase (${err.code}): ${err.message}`);
   } finally {
     btn.disabled = false;
     btn.textContent = "Confirmar Compra y Generar Tickets";
@@ -297,117 +271,4 @@ window.handleVerifySearch = function (event) {
   const matches = allSales.filter(s => {
     const cleanPhone = (s.phone || "").replace(/\D/g, "");
     const cleanCedula = (s.cedulaRaw || "").replace(/\D/g, "");
-    const hasTicket = Array.isArray(s.tickets) && s.tickets.includes(rawQuery.padStart(4, "0"));
-    return cleanCedula === rawQuery || cleanPhone.includes(rawQuery) || hasTicket;
-  });
-
-  if (matches.length === 0) {
-    resultsBox.innerHTML = `
-      <div class="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 text-center text-sm text-red-300 font-semibold">
-        No se encontraron tickets asociados a <strong>${rawQuery}</strong>.
-      </div>`;
-    return;
-  }
-
-  resultsBox.innerHTML = matches.map(m => `
-    <div class="p-4 rounded-2xl bg-slate-900/90 border border-white/10 mb-3">
-      <div class="flex items-center justify-between mb-2">
-        <span class="font-bold text-white">${m.name} <span class="text-xs text-slate-400">(${m.cedula})</span></span>
-        <span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase ${m.status === 'aprobado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">
-          ${m.status === 'aprobado' ? 'Verificado' : 'Pendiente por validar'}
-        </span>
-      </div>
-      <div class="flex flex-wrap gap-2 mt-2">
-        ${m.tickets.map(t => `<span class="px-2.5 py-1 rounded-lg bg-amber-500/20 border border-amber-400/30 font-mono font-black text-amber-300 text-xs">${t}</span>`).join("")}
-      </div>
-    </div>
-  `).join("");
-};
-
-// =========================================================================
-// 8. PANEL ADMINISTRADOR (cp1255747@gmail.com)
-// =========================================================================
-const FALLBACK_ADMIN_EMAIL = "cp1255747@gmail.com";
-const FALLBACK_ADMIN_PASS = "123456";
-
-window.handleAdminLogin = async function (event) {
-  if (event) event.preventDefault();
-  const email = document.getElementById("admin-email-input").value.trim().toLowerCase();
-  const pass = document.getElementById("admin-password-input").value;
-  const errorMsg = document.getElementById("admin-login-error");
-
-  try {
-    if (isFirebaseReady && auth) {
-      await signInWithEmailAndPassword(auth, email, pass);
-    } else {
-      if (email !== FALLBACK_ADMIN_EMAIL || pass !== FALLBACK_ADMIN_PASS) {
-        throw new Error("Credenciales inválidas");
-      }
-    }
-
-    if (errorMsg) errorMsg.classList.add("hidden");
-    document.getElementById("admin-login-view").classList.add("hidden");
-    document.getElementById("admin-dashboard-view").classList.remove("hidden");
-    window.renderAdminDashboard();
-  } catch (err) {
-    if (errorMsg) errorMsg.classList.remove("hidden");
-  }
-};
-
-window.renderAdminDashboard = function () {
-  const container = document.getElementById("admin-dashboard-view");
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-white/10">
-      <span class="text-sm font-bold text-slate-300">
-        Ventas: <strong class="text-amber-400">${allSales.length}</strong> |
-        Tickets Vendidos: <strong class="text-emerald-400">${occupiedSet.size} / 10000</strong>
-      </span>
-    </div>
-    <div class="space-y-3 mt-3">
-      ${allSales.length === 0 ? '<p class="text-center text-slate-400 text-sm py-6">Aún no hay ventas registradas.</p>' : ''}
-      ${allSales.map(s => `
-        <div class="p-4 rounded-2xl bg-slate-900 border border-white/10 flex flex-col sm:flex-row justify-between gap-3 text-xs">
-          <div>
-            <p class="font-bold text-white text-sm">${s.name} (${s.cedula})</p>
-            <p class="text-slate-400">Tel: ${s.phone} | Banco: ${s.bank} | Ref: <strong class="text-amber-300 font-mono">${s.ref}</strong> | Total: <strong>${s.totalBs} Bs</strong></p>
-            <p class="text-slate-300 mt-1.5">Tickets (${s.tickets.length}): <span class="font-mono text-amber-400">${s.tickets.join(", ")}</span></p>
-          </div>
-          <div class="flex items-center gap-2 shrink-0">
-            <span class="px-2.5 py-1 rounded-lg font-bold uppercase ${s.status === 'aprobado' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-amber-500/20 text-amber-400'}">${s.status}</span>
-            ${s.status !== 'aprobado' ? `<button type="button" onclick="approveSale('${s.id}')" class="px-3 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black">Aprobar</button>` : ''}
-            <button type="button" onclick="deleteSale('${s.id}')" class="px-3 py-1.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 font-bold">Eliminar</button>
-          </div>
-        </div>
-      `).join("")}
-    </div>
-  `;
-};
-
-window.approveSale = async function (id) {
-  if (isFirebaseReady && db) {
-    await updateDoc(doc(db, "ventas", id), { status: "aprobado" });
-  } else {
-    const sale = allSales.find(s => s.id === id);
-    if (sale) sale.status = "aprobado";
-    localStorage.setItem("rifa_ventas_backup", JSON.stringify(allSales));
-    window.renderAdminDashboard();
-  }
-  showToast("Pago aprobado");
-};
-
-window.deleteSale = async function (id) {
-  if (!confirm("¿Seguro que deseas eliminar esta compra y liberar sus tickets?")) return;
-  if (isFirebaseReady && db) {
-    await deleteDoc(doc(db, "ventas", id));
-  } else {
-    allSales = allSales.filter(s => s.id !== id);
-    localStorage.setItem("rifa_ventas_backup", JSON.stringify(allSales));
-    rebuildOccupiedSet();
-    updateProgressUI();
-    updateLiveTicker();
-    window.renderAdminDashboard();
-  }
-  showToast("Compra eliminada");
-};
+    const hasTicket = Array.isArray(s
