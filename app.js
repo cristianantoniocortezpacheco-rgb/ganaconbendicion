@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import {
-  getFirestore, collection, addDoc, onSnapshot, query, orderBy,
+  getFirestore, collection, addDoc, onSnapshot,
   doc, updateDoc, deleteDoc, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 import {
@@ -8,15 +8,15 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
 // =========================================================================
-// 1. CONFIGURACIÓN DE FIREBASE (Pega tus credenciales reales aquí)
+// 1. PEGA AQUÍ TUS 6 CLAVES DE FIREBASE (Reemplaza los valores entre comillas)
 // =========================================================================
 const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  storageBucket: "TU_PROYECTO.appspot.com",
-  messagingSenderId: "TU_SENDER_ID",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
+  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
+  projectId: "gana-con-bendicion-ce2c6",
+  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
+  messagingSenderId: "1085701104307",
+  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6"
 };
 
 let db = null;
@@ -24,14 +24,14 @@ let auth = null;
 let isFirebaseReady = false;
 
 try {
-  if (firebaseConfig.apiKey && firebaseConfig.apiKey !== "TU_API_KEY") {
+  if (firebaseConfig.apiKey && !firebaseConfig.apiKey.startsWith("PEGA_AQUI")) {
     const app = initializeApp(firebaseConfig);
     db = getFirestore(app);
     auth = getAuth(app);
     isFirebaseReady = true;
   }
 } catch (e) {
-  console.warn("Firebase aún no configurado, usando respaldo local:", e);
+  console.error("Error iniciando Firebase:", e);
 }
 
 // =========================================================================
@@ -53,26 +53,31 @@ function rebuildOccupiedSet() {
 rebuildOccupiedSet();
 
 // =========================================================================
-// 3. SINCRONIZACIÓN EN TIEMPO REAL
+// 3. SINCRONIZACIÓN EN TIEMPO REAL CON FIRESTORE
 // =========================================================================
 if (isFirebaseReady && db) {
-  const salesQuery = query(collection(db, "ventas"), orderBy("createdAt", "desc"));
-  onSnapshot(salesQuery, (snapshot) => {
+  onSnapshot(collection(db, "ventas"), (snapshot) => {
     allSales = [];
     snapshot.forEach((docSnap) => {
       allSales.push({ id: docSnap.id, ...docSnap.data() });
     });
+
+    // Ordenar del más reciente al más antiguo en el navegador
+    allSales.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
+
     localStorage.setItem("rifa_ventas_backup", JSON.stringify(allSales));
     rebuildOccupiedSet();
     updateBadgeStatus(true);
     updateProgressUI();
     updateLiveTicker();
-    if (!document.getElementById("admin-dashboard-view").classList.contains("hidden")) {
+
+    const adminView = document.getElementById("admin-dashboard-view");
+    if (adminView && !adminView.classList.contains("hidden")) {
       window.renderAdminDashboard();
     }
   }, (err) => {
-    console.error("Error leyendo Firestore:", err);
-    updateBadgeStatus(false);
+    console.error("Error de permisos o conexión en Firestore:", err);
+    updateBadgeStatus(false, "Error Permisos");
   });
 } else {
   updateBadgeStatus(false);
@@ -80,14 +85,14 @@ if (isFirebaseReady && db) {
   updateLiveTicker();
 }
 
-function updateBadgeStatus(online) {
+function updateBadgeStatus(online, customText = null) {
   const badge = document.getElementById("cloud-status-badge");
   if (!badge) return;
   if (online) {
     badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En Línea`;
     badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
   } else {
-    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> Modo Local`;
+    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400"></span> ${customText || "Modo Local"}`;
     badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30";
   }
 }
@@ -117,7 +122,7 @@ function updateLiveTicker() {
 }
 
 // =========================================================================
-// 4. CONTROL DE MODALES (ABRIR / CERRAR)
+// 4. CONTROL DE MODALES
 // =========================================================================
 window.openPurchaseModal = function () {
   const modal = document.getElementById("purchase-modal");
@@ -166,11 +171,10 @@ window.closeAdminModal = function () {
 };
 
 // =========================================================================
-// 5. CALCULADORA DE TICKETS Y COPIAR TEXTO
+// 5. CALCULADORA Y UTILIDADES
 // =========================================================================
 window.setTicketQty = function (amount) {
-  const input = document.getElementById("ticket-qty-input");
-  input.value = amount;
+  document.getElementById("ticket-qty-input").value = amount;
   window.updatePurchaseTotals();
 };
 
@@ -192,11 +196,7 @@ window.updatePurchaseTotals = function () {
 };
 
 window.copyText = function (text, message = "Copiado al portapapeles") {
-  navigator.clipboard.writeText(text).then(() => {
-    showToast(message);
-  }).catch(() => {
-    showToast(message);
-  });
+  navigator.clipboard.writeText(text).then(() => showToast(message)).catch(() => showToast(message));
 };
 
 function showToast(msg) {
@@ -250,6 +250,7 @@ window.submitPurchase = async function (event) {
       tickets: assigned,
       totalBs: qty * TICKET_PRICE_BS,
       status: "pendiente",
+      timestampMs: Date.now(),
       createdAt: isFirebaseReady ? serverTimestamp() : new Date().toISOString()
     };
 
@@ -275,7 +276,7 @@ window.submitPurchase = async function (event) {
     showToast("¡Tickets generados con éxito!");
   } catch (err) {
     console.error(err);
-    alert("Hubo un problema al guardar tu compra. Verifica tu conexión.");
+    alert("Error al registrar la compra: " + err.message);
   } finally {
     btn.disabled = false;
     btn.textContent = "Confirmar Compra y Generar Tickets";
@@ -327,7 +328,7 @@ window.handleVerifySearch = function (event) {
 // 8. PANEL ADMINISTRADOR (cp1255747@gmail.com)
 // =========================================================================
 const FALLBACK_ADMIN_EMAIL = "cp1255747@gmail.com";
-const FALLBACK_ADMIN_PASS = "123456"; // Cambia esta clave si no usas Firebase Auth
+const FALLBACK_ADMIN_PASS = "123456";
 
 window.handleAdminLogin = async function (event) {
   if (event) event.preventDefault();
@@ -409,61 +410,4 @@ window.deleteSale = async function (id) {
     window.renderAdminDashboard();
   }
   showToast("Compra eliminada");
-
-npm install firebase
-// Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
-import { getAnalytics } from "firebase/analytics";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
-
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
-  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
-  projectId: "gana-con-bendicion-ce2c6",
-  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
-  messagingSenderId: "1085701104307",
-  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
-  measurementId: "G-E908T6DZ1W"
-};
-
-// Initialize Firebase
-const app = initializeApp(firebaseConfig);
-const analytics = getAnalytics(app);
-
-
-};<script type="module">
-  // Import the functions you need from the SDKs you need
-  import { initializeApp } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-app.js";
-  import { getAnalytics } from "https://www.gstatic.com/firebasejs/13.4.0/firebase-analytics.js";
-  // TODO: Add SDKs for Firebase products that you want to use
-  // https://firebase.google.com/docs/web/setup#available-libraries
-
-  // Your web app's Firebase configuration
-  // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-  const firebaseConfig = {
-    apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
-    authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
-    projectId: "gana-con-bendicion-ce2c6",
-    storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
-    messagingSenderId: "1085701104307",
-    appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
-    measurementId: "G-E908T6DZ1W"
-  };
-
-  // Initialize Firebase
-  const app = initializeApp(firebaseConfig);
-  const analytics = getAnalytics(app);
-</script>
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
-  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
-  projectId: "gana-con-bendicion-ce2c6",
-  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
-  messagingSenderId: "1085701104307",
-  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6",
-  measurementId: "G-E908T6DZ1W"
 };
