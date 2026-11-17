@@ -1,293 +1,522 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" class="dark">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Gana con Bendición — Juega y Sé el Protagonista</title>
+  <title>CONFIAUTOV | Juega y Sé el Protagonista</title>
   <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    @keyframes marquee {
-      0% { transform: translateX(0%); }
-      100% { transform: translateX(-50%); }
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            obsidian: '#070b14',
+            card: '#0e1525',
+            cardHover: '#131d33',
+            brand: {
+              emerald: '#10b981',
+              gold: '#f59e0b',
+              goldLight: '#fbbf24'
+            }
+          },
+          animation: {
+            'marquee': 'marquee 32s linear infinite',
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+          },
+          keyframes: {
+            marquee: {
+              '0%': { transform: 'translateX(0%)' },
+              '100%': { transform: 'translateX(-50%)' },
+            }
+          }
+        }
+      }
     }
-    .animate-marquee {
-      display: inline-flex;
-      white-space: nowrap;
-      animation: marquee 28s linear infinite;
-    }
-    .animate-marquee:hover {
-      animation-play-state: paused;
-    }
-  </style>
+  </script>
 </head>
-<body class="bg-slate-950 text-slate-100 min-h-screen flex flex-col selection:bg-amber-400 selection:text-slate-950">
+<body class="min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-white relative bg-[#070b14]">
 
-  <!-- NOTIFICACIONES TOAST -->
-  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+  <!-- FONDO DIFUMINADO DEL LOGO -->
+  <div class="fixed inset-0 z-0 pointer-events-none flex items-center justify-center overflow-hidden">
+    <img src="logorifas.jpeg" alt="" aria-hidden="true"
+         class="w-[85vw] max-w-[680px] aspect-square object-cover rounded-full opacity-15 blur-md scale-110 select-none"
+         onerror="this.style.display='none'" />
+  </div>
 
-  <!-- BARRA SUPERIOR -->
-  <header class="sticky top-0 z-40 bg-slate-950/85 backdrop-blur-md border-b border-white/10">
-    <div class="max-w-3xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
-      <div class="flex items-center gap-2.5">
-        <div class="w-9 h-9 rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center text-slate-950 font-black text-lg shadow-lg shadow-amber-500/20">
-          G
-        </div>
-        <div>
-          <div class="flex items-center gap-2">
-            <h1 class="font-black text-sm sm:text-base tracking-tight text-white">GANA CON BENDICIÓN</h1>
-            <span id="cloud-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-              <span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Activo
-            </span>
-          </div>
-          <p class="text-[11px] text-slate-400">Juega y Sé el Protagonista</p>
+  <!-- TOAST NOTIFICATION CONTAINER -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 pointer-events-none"></div>
+
+  <!-- LIVE PURCHASES MARQUEE TICKER -->
+  <div class="bg-gradient-to-r from-emerald-950/90 via-slate-900 to-emerald-950/90 border-b border-emerald-500/20 py-2 overflow-hidden marquee-container relative z-40">
+    <div class="flex items-center">
+      <div class="bg-emerald-500 text-slate-950 text-[11px] font-black uppercase tracking-wider px-3 py-1 rounded-r-full shadow-lg flex items-center gap-1.5 shrink-0 z-10 mr-3">
+        <span class="w-2 h-2 rounded-full bg-slate-950 animate-ping"></span>
+        EN VIVO
+      </div>
+      <div class="overflow-hidden whitespace-nowrap flex-1">
+        <div id="live-ticker-track" class="inline-flex items-center gap-8 animate-marquee text-xs font-medium text-slate-200">
+          <!-- Populated dynamically via JS -->
         </div>
       </div>
+    </div>
+  </div>
 
-      <div class="flex items-center gap-2">
-        <a href="#verificador" class="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-semibold text-slate-200 transition">
-          Mis Tickets
+  <!-- NAVBAR -->
+  <header class="sticky top-0 z-30 glass border-b border-white/10">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 sm:h-20 flex items-center justify-between gap-3">
+      <!-- Brand Logo -->
+      <a href="#inicio" class="flex items-center gap-3 group">
+        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-2xl bg-gradient-to-br from-amber-400 via-amber-500 to-blue-600 p-[2px] shadow-lg group-hover:scale-105 transition-transform overflow-hidden shrink-0">
+          <img src="logorifas.jpeg" alt="Gana con Bendición Logo" class="w-full h-full object-cover rounded-[14px]" onerror="this.src='https://placehold.co/100x100/0e1525/fbbf24?text=GB'" />
+        </div>
+        <div>
+          <div class="flex items-center gap-1.5">
+            <span class="font-black text-base sm:text-lg tracking-tight text-white leading-tight">GANA CON BENDICIÓN</span>
+            <span id="cloud-status-badge" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-white/10">
+              <span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> Conectando...
+            </span>
+          </div>
+          <p class="text-[10px] sm:text-[11px] font-semibold tracking-widest text-amber-400 uppercase">Juega y Sé el Protagonista</p>
+        </div>
+      </a>
+
+      <!-- Desktop Navigation -->
+      <nav class="hidden md:flex items-center gap-6 text-sm font-semibold text-slate-300">
+        <a href="#inicio" class="hover:text-amber-400 transition-colors">Inicio</a>
+        <button onclick="openPurchaseModal()" class="hover:text-amber-400 transition-colors">Comprar Tickets</button>
+        <a href="#verificador" class="hover:text-amber-400 transition-colors">Verificador</a>
+        <a href="#como-jugar" class="hover:text-amber-400 transition-colors">Cómo Jugar</a>
+      </nav>
+
+      <!-- Action Buttons -->
+      <div class="flex items-center gap-2 sm:gap-3">
+        <a href="https://wa.me/584125974816?text=Hola%20Gana%20con%20Bendici%C3%B3n,%20necesito%20informaci%C3%B3n%20sobre%20la%20rifa%20de%203000%20Bendiciones" target="_blank" rel="noopener noreferrer"
+           class="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-400 border border-emerald-500/30 text-xs sm:text-sm font-bold transition-all">
+          <svg class="w-4 h-4 fill-current" viewBox="0 0 24 24"><path d="M12.031 6.172c-3.181 0-5.767 2.586-5.768 5.766-.001 1.298.38 2.27 1.019 3.287l-.582 2.128 2.182-.573c.978.58 1.911.928 3.145.929 3.178 0 5.767-2.587 5.768-5.766.001-3.187-2.575-5.77-5.764-5.771zm3.392 8.244c-.144.405-.837.774-1.17.824-.299.045-.677.063-1.092-.069-.252-.08-.575-.187-.988-.365-1.739-.751-2.874-2.502-2.961-2.617-.087-.116-.708-.94-.708-1.793s.448-1.273.607-1.446c.159-.173.346-.217.462-.217l.332.006c.106.005.249-.04.39.298.144.347.491 1.2.534 1.287.043.087.072.188.014.304-.058.116-.087.188-.173.289l-.26.304c-.087.086-.177.18-.076.354.101.174.449.741.964 1.201.662.591 1.221.774 1.394.86s.274.072.376-.043c.101-.116.433-.506.549-.68.116-.173.231-.145.39-.087s1.011.477 1.184.564.289.13.332.202c.045.072.045.419-.1.824z"/></svg>
+          <span class="hidden sm:inline">Soporte</span>
         </a>
-        <button type="button" onclick="openAdminModal()" title="Panel Administrador" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-amber-400 transition">
-          <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+        <button onclick="openAdminModal()" title="Panel Administrador"
+                class="p-2.5 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-400 border border-white/10 transition-all">
+          <svg class="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
           </svg>
         </button>
       </div>
     </div>
-
-    <!-- CINTA EN VIVO -->
-    <div class="bg-amber-500/10 border-t border-amber-500/20 py-1.5 overflow-hidden text-xs text-amber-200/90">
-      <div id="live-ticker-track" class="animate-marquee px-4">
-        <span>🎉 ¡Sorteo abierto! Participa ahora por 3.000 Bendiciones • Boletos del 0000 al 9999</span>
-      </div>
-    </div>
   </header>
 
-  <!-- CONTENIDO PRINCIPAL -->
-  <main class="flex-1 max-w-3xl w-full mx-auto px-4 py-6 space-y-6">
+  <!-- MAIN CONTENT -->
+  <main id="inicio" class="flex-1 relative z-10">
+    <!-- HERO SECTION / SORTEO ACTIVO -->
+    <section class="relative pt-8 pb-14 sm:pt-12 sm:pb-20 px-4 sm:px-6 overflow-hidden">
+      <!-- Ambient Background Glows -->
+      <div class="absolute top-10 left-1/2 -translate-x-1/2 w-[500px] h-[300px] bg-blue-600/15 blur-[120px] rounded-full pointer-events-none"></div>
+      <div class="absolute top-40 right-10 w-[300px] h-[300px] bg-amber-500/15 blur-[120px] rounded-full pointer-events-none"></div>
 
-    <!-- TARJETA PRINCIPAL DEL SORTEO -->
-    <section class="rounded-3xl bg-slate-900/90 border border-white/10 overflow-hidden shadow-2xl">
-      <!-- FLYER PROMOCIONAL -->
-      <div class="relative w-full bg-slate-900">
-        <img src="f.jfif" alt="Flyer Gana con Bendición" class="w-full max-h-[460px] object-cover object-center" />
-        <div class="absolute top-3 left-3 px-3 py-1 rounded-full bg-slate-950/80 backdrop-blur border border-amber-400/40 text-amber-300 text-xs font-extrabold tracking-wide">
-          🏆 PREMIO: 3.000 BENDICIONES
-        </div>
-      </div>
-
-      <div class="p-5 sm:p-6 space-y-5">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-          <div>
-            <span class="text-xs font-bold uppercase tracking-wider text-amber-400">Gran Sorteo Oficial • Súper Gana</span>
-            <h2 class="text-xl sm:text-2xl font-black text-white mt-0.5">3.000 Bendiciones a tu cuenta</h2>
+      <div class="max-w-4xl mx-auto">
+        <!-- Top Tagline -->
+        <div class="text-center mb-6 sm:mb-8">
+          <div class="inline-flex items-center gap-3 mb-4">
+            <img src="logorifas.jpeg" alt="Logo" class="w-14 h-14 rounded-2xl object-cover border-2 border-amber-400/50 shadow-xl" onerror="this.style.display='none'" />
           </div>
-          <div class="px-4 py-2 rounded-2xl bg-amber-500/15 border border-amber-400/30 text-right">
-            <span class="block text-[10px] uppercase font-bold text-amber-300/80">Valor del Ticket</span>
-            <span class="text-lg font-black text-amber-400">570 Bs</span>
-          </div>
-        </div>
-
-        <!-- BARRA DE DISPONIBILIDAD -->
-        <div class="p-4 rounded-2xl bg-slate-950/70 border border-white/5 space-y-2">
-          <div class="flex items-center justify-between text-xs font-bold">
-            <span class="text-slate-400">Boletos disponibles (0000 - 9999)</span>
-            <span id="progress-percentage-text" class="text-emerald-400 font-mono">100.00%</span>
-          </div>
-          <div class="w-full h-3 rounded-full bg-slate-800 overflow-hidden p-0.5">
-            <div id="progress-bar-fill" class="h-full rounded-full bg-gradient-to-r from-amber-500 to-emerald-400 transition-all duration-500" style="width: 2%;"></div>
-          </div>
+          <span class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/30 text-amber-400 text-xs sm:text-sm font-extrabold uppercase tracking-wider mb-3">
+            ✨ Sorteo Oficial • Del 0000 al 9999
+          </span>
+          <h1 class="text-3xl sm:text-5xl font-black tracking-tight text-white leading-tight">
+            GANA CON <span class="bg-gradient-to-r from-amber-400 via-yellow-300 to-blue-400 bg-clip-text text-transparent">BENDICIÓN</span>
+          </h1>
+          <p class="mt-2 text-slate-400 text-sm sm:text-base max-w-xl mx-auto">
+            Juega y sé el protagonista. Participa con tus boletos de 4 dígitos y gana directo en tu cuenta.
+          </p>
         </div>
 
-        <!-- BOTONES DE ACCIÓN -->
-        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-          <button type="button" onclick="openPurchaseModal()" class="sm:col-span-2 py-3.5 px-5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm sm:text-base shadow-lg shadow-amber-500/25 transition active:scale-[0.99]">
-            🎟️ Comprar Tickets Ahora
-          </button>
-          <button type="button" onclick="openDetailsModal()" class="py-3.5 px-4 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 font-bold text-sm transition">
-            Bases del Sorteo
-          </button>
+        <!-- MAIN RAFFLE CARD -->
+        <div class="glass rounded-3xl overflow-hidden border border-white/15 shadow-2xl gold-glow">
+          <!-- FLYER PROMOCIONAL (f.jfif) -->
+          <div class="w-full bg-slate-950 border-b border-white/10">
+            <img src="f.jfif" alt="Premio 3000 Bendiciones" class="w-full h-auto max-h-[550px] object-contain mx-auto block" />
+          </div>
+
+          <!-- Flyer / Promotional Banner Header -->
+          <div class="relative bg-gradient-to-br from-slate-900/90 via-[#0a1424]/90 to-blue-950/90 p-6 sm:p-10 border-b border-white/10">
+            <div class="absolute inset-0 opacity-10" style="background-image: radial-gradient(#fbbf24 1px, transparent 1px); background-size: 20px 20px;"></div>
+
+            <div class="relative z-10 flex flex-col md:flex-row items-center justify-between gap-6">
+              <div class="text-center md:text-left flex-1">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-lg bg-amber-500/20 border border-amber-400/30 text-amber-300 text-xs font-bold mb-3">
+                  <span>🏆 GRAN PREMIO MAYOR</span>
+                </div>
+                <h2 id="hero-raffle-title" class="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight uppercase leading-none">
+                  3000 BENDICIONES EN LA CUENTA
+                </h2>
+                <p id="hero-raffle-subtitle" class="mt-3 text-amber-300 font-bold text-base sm:text-lg">
+                  Transferencia directa a tu cuenta bancaria venezolana
+                </p>
+
+                <div class="mt-5 flex flex-wrap items-center justify-center md:justify-start gap-3">
+                  <div class="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/10">
+                    <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Valor del Boleto</span>
+                    <span id="hero-ticket-price-bs" class="text-xl sm:text-2xl font-black text-amber-400">570 Bs</span>
+                  </div>
+                  <div class="px-4 py-2.5 rounded-2xl bg-black/40 border border-white/10">
+                    <span class="block text-[10px] uppercase tracking-wider text-slate-400 font-bold">Modalidad</span>
+                    <span class="text-sm sm:text-base font-extrabold text-blue-300">Azar • 0000 al 9999</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Visual Emblem -->
+              <div class="w-full md:w-64 shrink-0 bg-gradient-to-b from-amber-400/20 to-blue-600/10 border border-amber-400/30 rounded-2xl p-5 text-center relative overflow-hidden">
+                <div class="text-4xl sm:text-5xl mb-2 drop-shadow-lg">💰</div>
+                <div class="font-mono text-2xl sm:text-3xl font-black text-amber-400 tracking-wider">3.000</div>
+                <div class="text-xs font-extrabold uppercase tracking-widest text-white mt-0.5">BENDICIONES</div>
+                <button onclick="openDetailsModal()" class="mt-4 w-full py-2 px-3 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs font-bold border border-white/15 transition-all flex items-center justify-center gap-1.5">
+                  <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                  Ver Detalles y Bases
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Progress Bar & Dates Body -->
+          <div class="p-6 sm:p-8 space-y-6 bg-card/60">
+            <!-- Progress Section (Only Percentage & Tickets Available) -->
+            <div>
+              <div class="flex items-center justify-between text-xs sm:text-sm font-bold mb-2">
+                <span class="text-slate-300 flex items-center gap-1.5">
+                  <span class="w-2 h-2 rounded-full bg-amber-400 animate-pulse"></span>
+                  Tickets Disponibles
+                </span>
+                <span id="progress-percentage-text" class="text-amber-400 font-mono text-base sm:text-lg font-black">0.00%</span>
+              </div>
+              <div class="w-full h-4 sm:h-5 bg-slate-900 rounded-full p-1 border border-white/10 overflow-hidden">
+                <div id="progress-bar-fill" class="h-full rounded-full bg-gradient-to-r from-blue-600 via-amber-500 to-amber-300 transition-all duration-700 relative" style="width: 0%">
+                  <div class="absolute inset-0 bg-white/20 animate-pulse"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Key Dates Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/80 border border-white/5">
+                <div class="w-10 h-10 rounded-xl bg-blue-500/15 text-blue-400 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                </div>
+                <div>
+                  <span class="block text-[11px] text-slate-400 uppercase font-bold">Fecha de Inicio</span>
+                  <span id="hero-start-date" class="text-sm font-bold text-white">Disponible Ahora</span>
+                </div>
+              </div>
+              <div class="flex items-center gap-3 p-3.5 rounded-2xl bg-slate-900/80 border border-white/5">
+                <div class="w-10 h-10 rounded-xl bg-amber-500/15 text-amber-400 flex items-center justify-center shrink-0">
+                  <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+                </div>
+                <div>
+                  <span class="block text-[11px] text-slate-400 uppercase font-bold">Sorteo Oficial</span>
+                  <span id="hero-draw-date" class="text-sm font-bold text-amber-300">Domingo 20 de Diciembre (Súper Gana 10:00 PM)</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- PRIMARY CTA BUTTONS -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 pt-2">
+              <button onclick="openPurchaseModal()"
+                      class="py-4 px-6 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black text-base sm:text-lg tracking-wide uppercase shadow-lg gold-glow transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/></svg>
+                ADQUIERE TUS TICKETS
+              </button>
+              <a href="#verificador"
+                 class="py-4 px-6 rounded-2xl bg-slate-800 hover:bg-slate-700 text-white font-extrabold text-base sm:text-lg tracking-wide uppercase border border-white/15 transform hover:-translate-y-0.5 transition-all flex items-center justify-center gap-2.5">
+                <svg class="w-5 h-5 text-amber-400" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                VER MIS TICKETS
+              </a>
+            </div>
+          </div>
         </div>
       </div>
     </section>
 
-    <!-- DATOS DE PAGO MÓVIL -->
-    <section class="rounded-3xl bg-slate-900/80 border border-white/10 p-5 sm:p-6 space-y-4">
-      <div class="flex items-center justify-between">
-        <h3 class="font-black text-base text-white">💳 Datos para Pago Móvil</h3>
-        <span class="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
-          Confirmación Directa
-        </span>
-      </div>
-
-      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-white/5 flex items-center justify-between">
-          <div>
-            <span class="block text-slate-400">Banco</span>
-            <strong class="text-white text-sm">Banco de Venezuela (0102)</strong>
-          </div>
-          <button type="button" onclick="copyText('0102', 'Código 0102 copiado')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-amber-400 font-bold">
-            Copiar
-          </button>
+    <!-- VERIFICADOR DE TICKETS SECTION -->
+    <section id="verificador" class="py-12 sm:py-16 px-4 sm:px-6 border-t border-white/5 bg-slate-950/50">
+      <div class="max-w-3xl mx-auto">
+        <div class="text-center mb-8">
+          <span class="text-xs font-extrabold uppercase tracking-widest text-emerald-400">Consulta Instantánea</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-white mt-1">VERIFICADOR DE TICKETS</h2>
+          <p class="text-slate-400 text-sm mt-2">Ingresa tu número de Cédula, Teléfono o un Número de Ticket (4 dígitos) para revisar tus boletos.</p>
         </div>
 
-        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-white/5 flex items-center justify-between">
-          <div>
-            <span class="block text-slate-400">Teléfono</span>
-            <strong class="text-white text-sm font-mono">0412-5974816</strong>
-          </div>
-          <button type="button" onclick="copyText('04125974816', 'Teléfono copiado')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-amber-400 font-bold">
-            Copiar
-          </button>
-        </div>
+        <div class="glass rounded-3xl p-5 sm:p-8 border border-white/10">
+          <form onsubmit="handleVerifySearch(event)" class="flex flex-col sm:flex-row gap-3">
+            <div class="relative flex-1">
+              <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-400">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10 6H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V8a2 2 0 00-2-2h-5m-4 0V5a2 2 0 114 0v1m-4 0a2 2 0 104 0m-5 8a2 2 0 100-4 2 2 0 000 4zm0 0c1.306 0 2.417.835 2.83 2M9 14a3.001 3.001 0 00-2.83 2M15 11h3m-3 4h2"/></svg>
+              </div>
+              <input type="text" id="verify-input" required placeholder="Ej: 27434216 o 04125974816 o 0842"
+                     class="w-full pl-11 pr-4 py-3.5 rounded-2xl bg-slate-900/90 border border-white/15 text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 font-medium text-sm sm:text-base" />
+            </div>
+            <button type="submit"
+                    class="py-3.5 px-7 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase text-sm tracking-wider transition-all shrink-0">
+              Buscar Tickets
+            </button>
+          </form>
 
-        <div class="p-3.5 rounded-2xl bg-slate-950/80 border border-white/5 flex items-center justify-between">
-          <div>
-            <span class="block text-slate-400">Cédula</span>
-            <strong class="text-white text-sm font-mono">V-26.854.912</strong>
+          <!-- Search Results Area -->
+          <div id="verify-results" class="mt-6 hidden">
+            <!-- Dynamically injected -->
           </div>
-          <button type="button" onclick="copyText('26854912', 'Cédula copiada')" class="px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-amber-400 font-bold">
-            Copiar
-          </button>
         </div>
       </div>
     </section>
 
-    <!-- VERIFICADOR DE TICKETS -->
-    <section id="verificador" class="rounded-3xl bg-slate-900/80 border border-white/10 p-5 sm:p-6 space-y-4">
-      <div>
-        <h3 class="font-black text-base text-white">🔍 Verificador de Tickets</h3>
-        <p class="text-xs text-slate-400 mt-0.5">Consulta tus boletos ingresando tu número de cédula, teléfono o número de ticket.</p>
+    <!-- PAYMENT METHODS & HOW TO PLAY -->
+    <section id="como-jugar" class="py-12 sm:py-16 px-4 sm:px-6 border-t border-white/5">
+      <div class="max-w-5xl mx-auto">
+        <div class="text-center mb-10">
+          <span class="text-xs font-extrabold uppercase tracking-widest text-amber-400">Rápido, Seguro y Transparente</span>
+          <h2 class="text-2xl sm:text-3xl font-black text-white mt-1">¿CÓMO PARTICIPAR EN GANA CON BENDICIÓN?</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-12">
+          <div class="glass rounded-2xl p-6 border border-white/10">
+            <div class="w-11 h-11 rounded-xl bg-amber-500/20 text-amber-400 font-black text-lg flex items-center justify-center mb-4">1</div>
+            <h3 class="font-extrabold text-white text-lg mb-2">Elige tus Tickets</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Haz clic en <strong class="text-white">"Adquiere tus Tickets"</strong>, selecciona la cantidad de boletos que deseas (570 Bs c/u) y completa tus datos.</p>
+          </div>
+          <div class="glass rounded-2xl p-6 border border-white/10">
+            <div class="w-11 h-11 rounded-xl bg-blue-500/20 text-blue-400 font-black text-lg flex items-center justify-center mb-4">2</div>
+            <h3 class="font-extrabold text-white text-lg mb-2">Realiza tu Pago Móvil</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">Paga por <strong class="text-white">Pago Móvil Mercantil</strong> e ingresa el número de referencia y datos de tu operación.</p>
+          </div>
+          <div class="glass rounded-2xl p-6 border border-white/10">
+            <div class="w-11 h-11 rounded-xl bg-emerald-500/20 text-emerald-400 font-black text-lg flex items-center justify-center mb-4">3</div>
+            <h3 class="font-extrabold text-white text-lg mb-2">Recibe tus Números</h3>
+            <p class="text-slate-400 text-sm leading-relaxed">El sistema te asigna al instante tus números únicos al azar del <strong class="text-amber-400">0000 al 9999</strong>. ¡Consúltalos cuando quieras!</p>
+          </div>
+        </div>
+
+        <!-- OFFICIAL PAYMENT ACCOUNT CARD (PAGO MOVIL ONLY) -->
+        <div class="max-w-xl mx-auto glass rounded-3xl p-6 sm:p-8 border border-amber-500/30">
+          <h3 class="text-lg sm:text-xl font-black text-white mb-5 flex items-center justify-center gap-2 text-center">
+            <span class="text-amber-400">📱</span> Cuenta Oficial de Pago Móvil
+          </h3>
+          <div class="p-5 rounded-2xl bg-slate-900/90 border border-white/10 space-y-3">
+            <div class="flex items-center justify-between">
+              <span class="text-xs font-black uppercase tracking-wider px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30">Pago Móvil</span>
+              <span class="text-xs font-bold text-slate-400">Banco Mercantil (0105)</span>
+            </div>
+            <div class="space-y-2 text-sm">
+              <div class="flex items-center justify-between bg-black/30 px-3 py-2.5 rounded-xl">
+                <span class="text-slate-400">Banco:</span>
+                <span class="font-bold text-white">Mercantil (0105)</span>
+              </div>
+              <div class="flex items-center justify-between bg-black/30 px-3 py-2.5 rounded-xl">
+                <span class="text-slate-400">Cédula:</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-bold text-white">27.434.216</span>
+                  <button onclick="copyText('27434216', 'Cédula copiada')" class="text-xs text-amber-400 hover:text-amber-300 font-bold">Copiar</button>
+                </div>
+              </div>
+              <div class="flex items-center justify-between bg-black/30 px-3 py-2.5 rounded-xl">
+                <span class="text-slate-400">Teléfono:</span>
+                <div class="flex items-center gap-2">
+                  <span class="font-mono font-bold text-white">0412-5974816</span>
+                  <button onclick="copyText('04125974816', 'Teléfono copiado')" class="text-xs text-amber-400 hover:text-amber-300 font-bold">Copiar</button>
+                </div>
+              </div>
+            </div>
+            <button onclick="copyText('0105 27434216 04125974816', 'Datos de Pago Móvil copiados')"
+                    class="w-full py-3 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-xs font-bold text-amber-300 border border-amber-500/30 transition-all">
+              📋 Copiar Datos Completos Pago Móvil
+            </button>
+          </div>
+        </div>
       </div>
-
-      <form onsubmit="handleVerifySearch(event)" class="flex flex-col sm:flex-row gap-2.5">
-        <input
-          id="verify-input"
-          type="text"
-          required
-          placeholder="Ej: 26854912 o 04125974816"
-          class="flex-1 px-4 py-3 rounded-2xl bg-slate-950 border border-white/10 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-400"
-        />
-        <button type="submit" class="px-6 py-3 rounded-2xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm transition">
-          Buscar Tickets
-        </button>
-      </form>
-
-      <div id="verify-results" class="hidden pt-2"></div>
     </section>
-
   </main>
 
-  <!-- PIE DE PÁGINA -->
-  <footer class="border-t border-white/10 py-6 px-4 text-center text-xs text-slate-500 space-y-1">
-    <p class="font-semibold text-slate-400">Gana con Bendición • Todos los derechos reservados</p>
-    <p>Sorteo supervisado a través de los resultados oficiales de Súper Gana (CONALOT / Lotería del Sur).</p>
+  <!-- FOOTER -->
+  <footer class="border-t border-white/10 bg-slate-950/90 py-10 px-4 sm:px-6 text-center sm:text-left relative z-10">
+    <div class="max-w-6xl mx-auto space-y-8">
+      <!-- Instituciones Certificadoras -->
+      <div class="flex flex-col items-center justify-center pb-8 border-b border-white/10">
+        <span class="text-[11px] font-extrabold uppercase tracking-widest text-slate-400 mb-4 text-center">
+          Sorteo Autorizado y Supervisado por Entes Oficiales
+        </span>
+        <div class="flex flex-wrap items-center justify-center gap-4 sm:gap-8">
+          <div class="bg-white/95 px-4 py-2.5 rounded-2xl shadow-md border border-white/20 flex items-center justify-center h-14 sm:h-16">
+            <img src="conalot.jpg" alt="CONALOT" class="max-h-10 sm:max-h-12 w-auto object-contain" onerror="this.parentElement.style.display='none'" />
+          </div>
+          <div class="bg-white/95 px-4 py-2.5 rounded-2xl shadow-md border border-white/20 flex items-center justify-center h-14 sm:h-16">
+            <img src="supergana.png" alt="Súper Gana" class="max-h-10 sm:max-h-12 w-auto object-contain" onerror="this.parentElement.style.display='none'" />
+          </div>
+          <div class="bg-white/95 px-4 py-2.5 rounded-2xl shadow-md border border-white/20 flex items-center justify-center h-14 sm:h-16">
+            <img src="sur.png" alt="Lotería del Sur" class="max-h-10 sm:max-h-12 w-auto object-contain" onerror="this.parentElement.style.display='none'" />
+          </div>
+        </div>
+      </div>
+
+      <!-- Marca y Enlaces -->
+      <div class="flex flex-col sm:flex-row items-center justify-between gap-6">
+        <div class="flex items-center gap-3">
+          <img src="logorifas.jpeg" alt="Logo" class="w-10 h-10 rounded-xl object-cover border border-amber-400/40" onerror="this.style.display='none'" />
+          <div>
+            <span class="font-black text-xl tracking-tight text-white">GANA CON BENDICIÓN</span>
+            <p class="text-xs text-amber-400 font-bold uppercase tracking-widest mt-0.5">Juega y Sé el Protagonista</p>
+            <p class="text-xs text-slate-500 mt-1">© 2026 Gana con Bendición. Todos los derechos reservados.</p>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-center gap-4 text-xs font-semibold text-slate-400">
+          <button onclick="openDetailsModal()" class="hover:text-white transition-colors">Términos y Bases</button>
+          <a href="#verificador" class="hover:text-white transition-colors">Verificar Tickets</a>
+          <a href="https://wa.me/584125974816" target="_blank" rel="noopener noreferrer" class="text-amber-400 hover:text-amber-300 font-bold">WhatsApp: 0412-5974816</a>
+        </div>
+      </div>
+    </div>
   </footer>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 1: COMPRA DE TICKETS                                            -->
+  <!-- MODAL 1: COMPRAR TICKETS                                              -->
   <!-- ===================================================================== -->
-  <div id="purchase-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-    <div class="relative w-full max-w-lg rounded-3xl bg-slate-900 border border-white/15 p-5 sm:p-6 shadow-2xl my-auto">
-      <div class="flex items-center justify-between pb-4 border-b border-white/10">
-        <h3 class="font-black text-lg text-white">🎟️ Adquirir Tickets</h3>
-        <button type="button" onclick="closePurchaseModal()" class="p-1.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white">
-          ✕
+  <div id="purchase-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-3 sm:p-5 bg-black/80 backdrop-blur-sm overflow-y-auto">
+    <div class="glass w-full max-w-2xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden my-auto">
+      <!-- Modal Header -->
+      <div class="px-6 py-4 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
+        <div>
+          <h3 class="text-lg sm:text-xl font-black text-white">ADQUIERE TUS TICKETS</h3>
+          <p class="text-xs text-amber-400 font-semibold">Asignación automática al azar (0000 - 9999)</p>
+        </div>
+        <button onclick="closePurchaseModal()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
       </div>
 
-      <!-- FORMULARIO DE COMPRA -->
-      <form id="purchase-form" onsubmit="submitPurchase(event)" class="space-y-4 mt-4">
-        <!-- SELECTOR DE CANTIDAD -->
-        <div class="p-4 rounded-2xl bg-slate-950 border border-white/10 space-y-3">
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-bold text-slate-400">Cantidad de Tickets:</span>
-            <div class="flex gap-1.5">
-              <button type="button" onclick="setTicketQty(2)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 text-xs font-bold">2</button>
-              <button type="button" onclick="setTicketQty(5)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 text-xs font-bold">5</button>
-              <button type="button" onclick="setTicketQty(10)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 text-xs font-bold">10</button>
-              <button type="button" onclick="setTicketQty(20)" class="px-2.5 py-1 rounded-lg bg-white/5 hover:bg-amber-500/20 text-amber-300 text-xs font-bold">20</button>
-            </div>
+      <!-- STEP 1: FORMULARIO DE COMPRA -->
+      <form id="purchase-form" onsubmit="submitPurchase(event)" class="p-5 sm:p-6 space-y-5 max-h-[82vh] overflow-y-auto">
+        <!-- Quantity Selector -->
+        <div class="bg-slate-900/80 p-4 rounded-2xl border border-white/10">
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400 mb-3">1. Selecciona la cantidad de tickets</label>
+          <div class="grid grid-cols-5 gap-2 mb-3">
+            <button type="button" onclick="setTicketQty(1)" class="qty-preset py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 border border-white/10 text-sm font-black text-white transition-all">+1</button>
+            <button type="button" onclick="setTicketQty(2)" class="qty-preset py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 border border-white/10 text-sm font-black text-white transition-all">+2</button>
+            <button type="button" onclick="setTicketQty(5)" class="qty-preset py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 border border-amber-500/40 text-sm font-black text-amber-400 transition-all">+5 🔥</button>
+            <button type="button" onclick="setTicketQty(10)" class="qty-preset py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 border border-white/10 text-sm font-black text-white transition-all">+10</button>
+            <button type="button" onclick="setTicketQty(20)" class="qty-preset py-2 rounded-xl bg-slate-800 hover:bg-amber-500/20 border border-white/10 text-sm font-black text-white transition-all">+20</button>
           </div>
 
-          <div class="flex items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-              <button type="button" onclick="changeTicketQty(-1)" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 font-black text-lg">-</button>
-              <input id="ticket-qty-input" type="number" min="1" max="500" value="2" oninput="updatePurchaseTotals()" class="w-20 h-10 text-center rounded-xl bg-slate-900 border border-white/15 font-black text-white text-base" />
-              <button type="button" onclick="changeTicketQty(1)" class="w-10 h-10 rounded-xl bg-white/10 hover:bg-white/20 font-black text-lg">+</button>
+          <div class="flex items-center justify-between gap-4 pt-2 border-t border-white/10">
+            <div class="flex items-center gap-3">
+              <button type="button" onclick="changeTicketQty(-1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 font-black text-xl text-white flex items-center justify-center">-</button>
+              <input type="number" id="ticket-qty-input" value="2" min="1" max="500" onchange="updatePurchaseTotals()"
+                     class="w-16 text-center font-mono text-xl font-black bg-transparent text-white border-b-2 border-amber-400 focus:outline-none" />
+              <button type="button" onclick="changeTicketQty(1)" class="w-10 h-10 rounded-xl bg-slate-800 hover:bg-slate-700 font-black text-xl text-white flex items-center justify-center">+</button>
             </div>
             <div class="text-right">
-              <span class="block text-[11px] text-slate-400">Total a Pagar</span>
-              <span id="modal-total-bs" class="text-xl font-black text-amber-400">1.140 Bs</span>
+              <span class="block text-[11px] text-slate-400 font-bold uppercase">Total a Pagar</span>
+              <span id="modal-total-bs" class="text-xl sm:text-2xl font-black text-amber-400">1.140 Bs</span>
             </div>
           </div>
         </div>
 
-        <!-- DATOS DEL PARTICIPANTE -->
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-          <div class="sm:col-span-2">
-            <label class="block text-xs font-bold text-slate-300 mb-1">Nombre y Apellido</label>
-            <input id="buyer-name" type="text" required placeholder="Ej: Carlos Pérez" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400" />
+        <!-- Buyer Details -->
+        <div class="space-y-3">
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">2. Datos del Participante</label>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div>
+              <label class="block text-xs text-slate-300 font-semibold mb-1">Nombre y Apellido *</label>
+              <input type="text" id="buyer-name" required placeholder="Ej: Carlos Mendoza"
+                     class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400" />
+            </div>
+            <div>
+              <label class="block text-xs text-slate-300 font-semibold mb-1">Cédula de Identidad *</label>
+              <div class="flex gap-1.5">
+                <select id="buyer-cedula-type" class="px-2.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm font-bold text-amber-400 focus:outline-none focus:border-amber-400">
+                  <option value="V">V</option>
+                  <option value="E">E</option>
+                </select>
+                <input type="text" id="buyer-cedula" required placeholder="Ej: 27434216"
+                       class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400" />
+              </div>
+            </div>
+          </div>
+          <div>
+            <label class="block text-xs text-slate-300 font-semibold mb-1">Teléfono WhatsApp *</label>
+            <input type="tel" id="buyer-phone" required placeholder="Ej: 04125974816"
+                   class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400" />
+          </div>
+        </div>
+
+        <!-- Payment Information (PAGO MOVIL ONLY) -->
+        <div class="space-y-3">
+          <label class="block text-xs font-extrabold uppercase tracking-wider text-slate-400">3. Método de Pago (Pago Móvil Mercantil)</label>
+          <div class="p-4 rounded-2xl bg-blue-950/30 border border-blue-500/30 space-y-2 text-xs">
+            <div class="flex justify-between items-center">
+              <span class="text-slate-300">Banco: <strong class="text-white">Mercantil (0105)</strong></span>
+              <button type="button" onclick="copyText('0105 27434216 04125974816', 'Datos Pago Móvil copiados')" class="px-2.5 py-1 rounded-lg bg-blue-500/20 text-blue-300 font-bold hover:bg-blue-500/30">Copiar Todo</button>
+            </div>
+            <div class="grid grid-cols-2 gap-2 pt-1 text-slate-300">
+              <div>Cédula: <strong class="font-mono text-white">27.434.216</strong></div>
+              <div>Teléfono: <strong class="font-mono text-white">0412-5974816</strong></div>
+            </div>
           </div>
 
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Cédula</label>
-            <div class="flex gap-1.5">
-              <select id="buyer-cedula-type" class="px-2.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm font-bold text-white">
-                <option value="V">V</option>
-                <option value="E">E</option>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div>
+              <label class="block text-xs text-slate-300 font-semibold mb-1">Banco Emisor *</label>
+              <select id="payment-bank" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm text-white focus:outline-none focus:border-amber-400">
+                <option value="">Selecciona tu banco...</option>
+                <option value="Banesco">Banesco (0134)</option>
+                <option value="Mercantil">Mercantil (0105)</option>
+                <option value="Venezuela">Banco de Venezuela (0102)</option>
+                <option value="Provincial">BBVA Provincial (0108)</option>
+                <option value="BNC">BNC (0191)</option>
+                <option value="Bancamiga">Bancamiga (0172)</option>
+                <option value="Bicentenario">Bicentenario (0175)</option>
+                <option value="Otro">Otro Banco</option>
               </select>
-              <input id="buyer-cedula" type="text" required placeholder="12345678" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400" />
             </div>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Teléfono WhatsApp</label>
-            <input id="buyer-phone" type="tel" required placeholder="04121234567" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400" />
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Banco Emisor</label>
-            <select id="payment-bank" class="w-full px-3 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400">
-              <option value="Banco de Venezuela">Banco de Venezuela</option>
-              <option value="Banesco">Banesco</option>
-              <option value="Mercantil">Mercantil</option>
-              <option value="Provincial">Provincial</option>
-              <option value="BNC">BNC</option>
-              <option value="Bancamiga">Bancamiga</option>
-              <option value="Pago Móvil / Otro">Pago Móvil / Otro</option>
-            </select>
-          </div>
-
-          <div>
-            <label class="block text-xs font-bold text-slate-300 mb-1">Referencia (Últimos 6 dígitos)</label>
-            <input id="payment-ref" type="text" required placeholder="Ej: 482910" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white font-mono focus:outline-none focus:border-amber-400" />
+            <div>
+              <label class="block text-xs text-slate-300 font-semibold mb-1">Número de Referencia *</label>
+              <input type="text" id="payment-ref" required placeholder="Últimos 4 a 8 dígitos"
+                     class="w-full px-3.5 py-2.5 rounded-xl bg-slate-900 border border-white/15 text-sm font-mono text-white focus:outline-none focus:border-amber-400" />
+            </div>
           </div>
         </div>
 
-        <button id="submit-purchase-btn" type="submit" class="w-full py-3.5 rounded-2xl bg-gradient-to-r from-amber-400 to-amber-500 hover:from-amber-300 hover:to-amber-400 text-slate-950 font-black text-sm shadow-lg shadow-amber-500/20 transition">
+        <button type="submit" id="submit-purchase-btn"
+                class="w-full py-4 rounded-2xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-slate-950 font-black uppercase tracking-wider text-sm sm:text-base shadow-lg transition-all">
           Confirmar Compra y Generar Tickets
         </button>
       </form>
 
-      <!-- COMPROBANTE CON TICKETS ASIGNADOS -->
-      <div id="purchase-receipt" class="hidden space-y-4 mt-4 text-center">
-        <div class="w-12 h-12 mx-auto rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center text-2xl font-black">
-          ✓
+      <!-- STEP 2: COMPROBANTE DE TICKETS GENERADOS -->
+      <div id="purchase-receipt" class="hidden p-6 sm:p-8 text-center space-y-5 max-h-[82vh] overflow-y-auto">
+        <div class="w-16 h-16 rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto border border-emerald-500/30 text-3xl">
+          ✅
         </div>
         <div>
-          <h4 class="text-lg font-black text-white">¡Tickets Generados!</h4>
-          <p class="text-xs text-slate-400 mt-1">Estos son tus números asignados al azar. Envía tu comprobante por WhatsApp para validar tu pago.</p>
+          <h4 class="text-xl sm:text-2xl font-black text-white">¡COMPRA REGISTRADA!</h4>
+          <p class="text-xs sm:text-sm text-slate-400 mt-1">Tus números asignados al azar están listos:</p>
         </div>
-
-        <div id="receipt-tickets-grid" class="flex flex-wrap justify-center gap-2 p-4 rounded-2xl bg-slate-950 border border-amber-400/20 max-h-48 overflow-y-auto"></div>
-
-        <div class="flex flex-col gap-2.5 pt-2">
-          <a id="receipt-whatsapp-link" href="#" target="_blank" rel="noopener" class="w-full py-3.5 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-sm transition">
-            📲 Enviar Comprobante por WhatsApp
+        <div id="receipt-tickets-grid" class="flex flex-wrap justify-center gap-2 p-4 rounded-2xl bg-slate-900/90 border border-white/10"></div>
+        <p class="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 rounded-xl p-3">
+          Guarda tus números o consúltalos cuando quieras en el <strong>Verificador de Tickets</strong> usando tu cédula.
+        </p>
+        <div class="flex flex-col sm:flex-row gap-3">
+          <a id="receipt-whatsapp-link" href="https://wa.me/584125974816" target="_blank" rel="noopener noreferrer"
+             class="flex-1 py-3.5 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black text-xs sm:text-sm uppercase tracking-wider">
+            Enviar Comprobante por WhatsApp
           </a>
-          <button type="button" onclick="closePurchaseModal()" class="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 font-bold text-xs">
-            Cerrar Ventana
+          <button onclick="closePurchaseModal()" class="py-3.5 px-6 rounded-xl bg-slate-800 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm">
+            Cerrar
           </button>
         </div>
       </div>
@@ -295,58 +524,50 @@
   </div>
 
   <!-- ===================================================================== -->
-  <!-- MODAL 2: BASES Y DETALLES DEL SORTEO                                  -->
+  <!-- MODAL 2: DETALLES Y BASES DEL SORTEO                                  -->
   <!-- ===================================================================== -->
-  <div id="details-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-    <div class="w-full max-w-md rounded-3xl bg-slate-900 border border-white/15 p-6 space-y-4 shadow-2xl">
-      <div class="flex items-center justify-between pb-3 border-b border-white/10">
-        <h3 class="font-black text-base text-white">📋 Bases del Sorteo</h3>
-        <button type="button" onclick="closeDetailsModal()" class="p-1.5 rounded-xl bg-white/5 text-slate-400 hover:text-white">✕</button>
+  <div id="details-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
+    <div class="glass w-full max-w-lg rounded-3xl border border-white/15 shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
+        <h3 class="text-lg font-black text-white">BASES Y DETALLES DEL SORTEO</h3>
+        <button onclick="closeDetailsModal()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
+        </button>
       </div>
-      <ul class="space-y-2.5 text-xs text-slate-300 leading-relaxed">
-        <li>• <strong>Premio Mayor:</strong> 3.000 Bendiciones transferidas directamente a tu cuenta bancaria en Venezuela.</li>
-        <li>• <strong>Emisión:</strong> 10.000 boletos numerados del <span class="font-mono text-amber-400">0000</span> al <span class="font-mono text-amber-400">9999</span>.</li>
-        <li>• <strong>Modalidad de Sorteo:</strong> Jugará por los resultados oficiales de <strong>Súper Gana</strong> (supervisado por CONALOT y Lotería del Sur) al completarse la venta de los boletos.</li>
-        <li>• <strong>Validación:</strong> Todo ticket debe tener su referencia de pago verificada para optar al premio.</li>
-      </ul>
-      <button type="button" onclick="closeDetailsModal()" class="w-full py-2.5 rounded-xl bg-amber-500 text-slate-950 font-black text-xs">
-        Entendido
-      </button>
+      <div class="p-6 space-y-4 text-sm text-slate-300 leading-relaxed max-h-[75vh] overflow-y-auto">
+        <p><strong class="text-amber-400">1. Premio Mayor:</strong> 3.000 Bendiciones transferidas directamente a la cuenta bancaria nacional del ganador.</p>
+        <p><strong class="text-amber-400">2. Modalidad:</strong> Participan 10.000 boletos numerados del <span class="font-mono text-white">0000</span> al <span class="font-mono text-white">9999</span>, asignados automáticamente al azar.</p>
+        <p><strong class="text-amber-400">3. Fecha y Lotería:</strong> Domingo 20 de Diciembre mediante los resultados oficiales de <strong>Súper Gana (10:00 PM)</strong>, supervisado por CONALOT.</p>
+        <p><strong class="text-amber-400">4. Validación:</strong> Todo ticket queda sujeto a la verificación de la referencia bancaria del Pago Móvil reportado.</p>
+      </div>
     </div>
   </div>
 
   <!-- ===================================================================== -->
   <!-- MODAL 3: PANEL ADMINISTRADOR                                          -->
   <!-- ===================================================================== -->
-  <div id="admin-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/85 backdrop-blur-sm p-4 overflow-y-auto">
-    <div class="w-full max-w-2xl rounded-3xl bg-slate-900 border border-white/15 p-5 sm:p-6 shadow-2xl my-auto">
-      <div class="flex items-center justify-between pb-3 border-b border-white/10">
-        <h3 class="font-black text-base text-white">🔐 Administración — Gana con Bendición</h3>
-        <button type="button" onclick="closeAdminModal()" class="p-1.5 rounded-xl bg-white/5 text-slate-400 hover:text-white">✕</button>
-      </div>
-
-      <!-- LOGIN ADMIN -->
-      <form id="admin-login-view" onsubmit="handleAdminLogin(event)" class="space-y-4 mt-4 max-w-sm mx-auto">
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Correo Administrador</label>
-          <input id="admin-email-input" type="email" required placeholder="cp1255747@gmail.com" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400" />
-        </div>
-        <div>
-          <label class="block text-xs font-bold text-slate-300 mb-1">Contraseña</label>
-          <input id="admin-password-input" type="password" required placeholder="••••••" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-950 border border-white/10 text-sm text-white focus:outline-none focus:border-amber-400" />
-        </div>
-        <p id="admin-login-error" class="hidden text-xs text-red-400 font-semibold text-center">Correo o contraseña incorrectos.</p>
-        <button type="submit" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black text-sm">
-          Ingresar al Panel
+  <div id="admin-modal" class="fixed inset-0 z-50 hidden items-center justify-center p-4 bg-black/85 backdrop-blur-sm">
+    <div class="glass w-full max-w-4xl rounded-3xl border border-white/15 shadow-2xl overflow-hidden">
+      <div class="px-6 py-4 bg-slate-900/90 border-b border-white/10 flex items-center justify-between">
+        <h3 class="text-lg font-black text-white">PANEL ADMINISTRADOR</h3>
+        <button onclick="closeAdminModal()" class="p-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white">
+          <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/></svg>
         </button>
-      </form>
-
-      <!-- DASHBOARD ADMIN -->
-      <div id="admin-dashboard-view" class="hidden mt-4 max-h-[65vh] overflow-y-auto pr-1"></div>
+      </div>
+      <div id="admin-login-view" class="p-6 max-w-sm mx-auto space-y-4">
+        <label class="block text-xs font-bold uppercase text-slate-400">Clave de Acceso</label>
+        <input type="password" id="admin-password-input" placeholder="Ingresa la contraseña"
+               class="w-full px-4 py-3 rounded-xl bg-slate-900 border border-white/15 text-white focus:outline-none focus:border-amber-400" />
+        <button onclick="handleAdminLogin()" class="w-full py-3 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-black uppercase text-sm">
+          Ingresar
+        </button>
+      </div>
+      <div id="admin-dashboard-view" class="hidden p-6 max-h-[78vh] overflow-y-auto space-y-4">
+        <!-- Populated dynamically via JS -->
+      </div>
     </div>
   </div>
 
-  <!-- SCRIPT PRINCIPAL SIN DEPENDENCIAS EXTERNAS -->
-  <script src="app.js?v=7"></script>
+  <script src="app.js"></script>
 </body>
 </html>
