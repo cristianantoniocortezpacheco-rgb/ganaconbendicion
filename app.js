@@ -1,38 +1,12 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import {
-  initializeFirestore, collection, addDoc, onSnapshot,
-  doc, updateDoc, deleteDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-import {
-  getAuth, signInWithEmailAndPassword
-} from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-
 // =========================================================================
-// 1. CONFIGURACIÓN DE FIREBASE (gana-con-bendicion-ce2c6)
-// =========================================================================
-const firebaseConfig = {
-  apiKey: "AIzaSyC4fB2hQhV63LsjAP1GHONVG5IFiEEfU1I",
-  authDomain: "gana-con-bendicion-ce2c6.firebaseapp.com",
-  projectId: "gana-con-bendicion-ce2c6",
-  storageBucket: "gana-con-bendicion-ce2c6.firebasestorage.app",
-  messagingSenderId: "1085701104307",
-  appId: "1:1085701104307:web:77d09076ec6f4df579c6c6"
-};
-
-const app = initializeApp(firebaseConfig);
-
-// experimentalForceLongPolling evita bloqueos y demoras en redes móviles/CANTV
-const db = initializeFirestore(app, {
-  experimentalForceLongPolling: true
-});
-const auth = getAuth(app);
-
-// =========================================================================
-// 2. VARIABLES GLOBALES Y ARRANQUE INSTANTÁNEO
+// 1. VARIABLES GLOBALES (MODO RÁPIDO SIN BASE DE DATOS EXTERNA)
 // =========================================================================
 const TICKET_PRICE_BS = 570;
 const TOTAL_TICKETS = 10000;
-let allSales = JSON.parse(localStorage.getItem("rifa_ventas_cache") || "[]");
+const ADMIN_EMAIL = "cp1255747@gmail.com";
+const ADMIN_PASS = "123456";
+
+let allSales = JSON.parse(localStorage.getItem("rifa_ventas_local") || "[]");
 let occupiedSet = new Set();
 
 function rebuildOccupiedSet() {
@@ -44,48 +18,16 @@ function rebuildOccupiedSet() {
   });
 }
 
-// Pintar interfaz de inmediato con caché mientras conecta a la nube
 rebuildOccupiedSet();
+updateBadgeStatus();
 updateProgressUI();
 updateLiveTicker();
-updateBadgeStatus(false, "Conectando...");
 
-// =========================================================================
-// 3. SINCRONIZACIÓN EN TIEMPO REAL CON FIRESTORE
-// =========================================================================
-onSnapshot(collection(db, "ventas"), (snapshot) => {
-  allSales = [];
-  snapshot.forEach((docSnap) => {
-    allSales.push({ id: docSnap.id, ...docSnap.data() });
-  });
-
-  allSales.sort((a, b) => (b.timestampMs || 0) - (a.timestampMs || 0));
-  localStorage.setItem("rifa_ventas_cache", JSON.stringify(allSales));
-
-  rebuildOccupiedSet();
-  updateBadgeStatus(true);
-  updateProgressUI();
-  updateLiveTicker();
-
-  const adminView = document.getElementById("admin-dashboard-view");
-  if (adminView && !adminView.classList.contains("hidden")) {
-    window.renderAdminDashboard();
-  }
-}, (err) => {
-  console.error("Error Firestore:", err.code, err.message);
-  updateBadgeStatus(false, `Error: ${err.code || "Red"}`);
-});
-
-function updateBadgeStatus(online, customText = null) {
+function updateBadgeStatus() {
   const badge = document.getElementById("cloud-status-badge");
   if (!badge) return;
-  if (online) {
-    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> En Línea`;
-    badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
-  } else {
-    badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse"></span> ${customText || "Conectando..."}`;
-    badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30";
-  }
+  badge.innerHTML = `<span class="w-1.5 h-1.5 rounded-full bg-emerald-400"></span> Activo`;
+  badge.className = "inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/30";
 }
 
 function updateProgressUI() {
@@ -113,7 +55,7 @@ function updateLiveTicker() {
 }
 
 // =========================================================================
-// 4. CONTROL DE MODALES
+// 2. CONTROL DE MODALES
 // =========================================================================
 window.openPurchaseModal = function () {
   const modal = document.getElementById("purchase-modal");
@@ -178,7 +120,7 @@ window.closeAdminModal = function () {
 };
 
 // =========================================================================
-// 5. CALCULADORA Y UTILIDADES
+// 3. CALCULADORA Y UTILIDADES
 // =========================================================================
 window.setTicketQty = function (amount) {
   const input = document.getElementById("ticket-qty-input");
@@ -219,101 +161,80 @@ function showToast(msg) {
 }
 
 // =========================================================================
-// 6. PROCESAR COMPRA DE TICKETS (RESPUESTA INSTANTÁNEA + SINCRONIZACIÓN)
+// 4. PROCESAR COMPRA DE TICKETS (INSTANTÁNEO)
 // =========================================================================
-window.submitPurchase = async function (event) {
+window.submitPurchase = function (event) {
   event.preventDefault();
-  const btn = document.getElementById("submit-purchase-btn");
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Generando tickets...";
+
+  const qty = parseInt(document.getElementById("ticket-qty-input")?.value, 10) || 1;
+  const name = (document.getElementById("buyer-name")?.value || "").trim();
+  const cedulaType = document.getElementById("buyer-cedula-type")?.value || "V";
+  const cedula = (document.getElementById("buyer-cedula")?.value || "").trim().replace(/\D/g, "");
+  const phone = (document.getElementById("buyer-phone")?.value || "").trim();
+  const bank = document.getElementById("payment-bank")?.value || "Pago Móvil";
+  const ref = (document.getElementById("payment-ref")?.value || "").trim();
+
+  if (TOTAL_TICKETS - occupiedSet.size < qty) {
+    alert("No quedan suficientes tickets disponibles.");
+    return;
   }
 
-  try {
-    const qty = parseInt(document.getElementById("ticket-qty-input")?.value, 10) || 1;
-    const name = (document.getElementById("buyer-name")?.value || "").trim();
-    const cedulaType = document.getElementById("buyer-cedula-type")?.value || "V";
-    const cedula = (document.getElementById("buyer-cedula")?.value || "").trim().replace(/\D/g, "");
-    const phone = (document.getElementById("buyer-phone")?.value || "").trim();
-    const bank = document.getElementById("payment-bank")?.value || "Pago Móvil";
-    const ref = (document.getElementById("payment-ref")?.value || "").trim();
-
-    if (TOTAL_TICKETS - occupiedSet.size < qty) {
-      alert("No quedan suficientes tickets disponibles.");
-      return;
-    }
-
-    const assigned = [];
-    while (assigned.length < qty) {
-      const rand = Math.floor(Math.random() * TOTAL_TICKETS).toString().padStart(4, "0");
-      if (!occupiedSet.has(rand) && !assigned.includes(rand)) {
-        assigned.push(rand);
-      }
-    }
-
-    const saleData = {
-      name,
-      cedula: `${cedulaType}-${cedula}`,
-      cedulaRaw: cedula,
-      phone,
-      bank,
-      ref,
-      tickets: assigned,
-      totalBs: qty * TICKET_PRICE_BS,
-      status: "pendiente",
-      timestampMs: Date.now(),
-      createdAt: serverTimestamp()
-    };
-
-    // Guardar en Firebase con tiempo máximo de 6 segundos para evitar que se congele
-    await Promise.race([
-      addDoc(collection(db, "ventas"), saleData),
-      new Promise((_, reject) =>
-        setTimeout(() => reject(new Error("Tiempo de espera agotado. Revisa tus reglas de Firestore o tu conexión.")), 6000)
-      )
-    ]);
-
-    // Actualizar memoria local al instante
-    assigned.forEach(t => occupiedSet.add(t));
-    updateProgressUI();
-
-    // Mostrar pantalla de comprobante con tickets asignados
-    const formEl = document.getElementById("purchase-form");
-    const receiptEl = document.getElementById("purchase-receipt");
-    const gridEl = document.getElementById("receipt-tickets-grid");
-    const waLinkEl = document.getElementById("receipt-whatsapp-link");
-
-    if (formEl) formEl.classList.add("hidden");
-    if (receiptEl) {
-      receiptEl.classList.remove("hidden");
-      receiptEl.style.display = "block";
-    }
-
-    if (gridEl) {
-      gridEl.innerHTML = assigned
-        .map(num => `<span class="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 font-mono font-black text-amber-300 text-sm">${num}</span>`)
-        .join("");
-    }
-
-    if (waLinkEl) {
-      const msg = encodeURIComponent(`Hola Gana con Bendición, acabo de comprar ${qty} ticket(s).\nNombre: ${name}\nCédula: ${cedulaType}-${cedula}\nRef: ${ref}\nTickets: ${assigned.join(", ")}`);
-      waLinkEl.href = `https://wa.me/584125974816?text=${msg}`;
-    }
-
-    showToast("¡Tickets generados con éxito!");
-  } catch (err) {
-    console.error("Error al comprar:", err);
-    alert(`No se pudo completar la compra: ${err.message}`);
-  } finally {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "Confirmar Compra y Generar Tickets";
+  const assigned = [];
+  while (assigned.length < qty) {
+    const rand = Math.floor(Math.random() * TOTAL_TICKETS).toString().padStart(4, "0");
+    if (!occupiedSet.has(rand) && !assigned.includes(rand)) {
+      assigned.push(rand);
     }
   }
+
+  const saleData = {
+    id: "sale_" + Date.now(),
+    name,
+    cedula: `${cedulaType}-${cedula}`,
+    cedulaRaw: cedula,
+    phone,
+    bank,
+    ref,
+    tickets: assigned,
+    totalBs: qty * TICKET_PRICE_BS,
+    status: "pendiente",
+    timestampMs: Date.now()
+  };
+
+  allSales.unshift(saleData);
+  localStorage.setItem("rifa_ventas_local", JSON.stringify(allSales));
+
+  rebuildOccupiedSet();
+  updateProgressUI();
+  updateLiveTicker();
+
+  const formEl = document.getElementById("purchase-form");
+  const receiptEl = document.getElementById("purchase-receipt");
+  const gridEl = document.getElementById("receipt-tickets-grid");
+  const waLinkEl = document.getElementById("receipt-whatsapp-link");
+
+  if (formEl) formEl.classList.add("hidden");
+  if (receiptEl) {
+    receiptEl.classList.remove("hidden");
+    receiptEl.style.display = "block";
+  }
+
+  if (gridEl) {
+    gridEl.innerHTML = assigned
+      .map(num => `<span class="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 font-mono font-black text-amber-300 text-sm">${num}</span>`)
+      .join("");
+  }
+
+  if (waLinkEl) {
+    const msg = encodeURIComponent(`Hola Gana con Bendición, acabo de comprar ${qty} ticket(s).\nNombre: ${name}\nCédula: ${cedulaType}-${cedula}\nRef: ${ref}\nTickets: ${assigned.join(", ")}`);
+    waLinkEl.href = `https://wa.me/584125974816?text=${msg}`;
+  }
+
+  showToast("¡Tickets generados con éxito!");
 };
 
 // =========================================================================
-// 7. VERIFICADOR DE TICKETS
+// 5. VERIFICADOR DE TICKETS
 // =========================================================================
 window.handleVerifySearch = function (event) {
   event.preventDefault();
@@ -354,40 +275,22 @@ window.handleVerifySearch = function (event) {
 };
 
 // =========================================================================
-// 8. PANEL ADMINISTRADOR (cp1255747@gmail.com)
+// 6. PANEL ADMINISTRADOR (cp1255747@gmail.com / 123456)
 // =========================================================================
-window.handleAdminLogin = async function (event) {
+window.handleAdminLogin = function (event) {
   if (event) event.preventDefault();
   const email = (document.getElementById("admin-email-input")?.value || "").trim().toLowerCase();
   const pass = document.getElementById("admin-password-input")?.value || "";
   const errorMsg = document.getElementById("admin-login-error");
 
-  if (email !== "cp1255747@gmail.com") {
-    if (errorMsg) {
-      errorMsg.textContent = "Este correo no está autorizado como administrador.";
-      errorMsg.classList.remove("hidden");
-    }
-    return;
-  }
-
-  try {
-    await signInWithEmailAndPassword(auth, email, pass);
+  if (email === ADMIN_EMAIL && pass === ADMIN_PASS) {
     if (errorMsg) errorMsg.classList.add("hidden");
     document.getElementById("admin-login-view")?.classList.add("hidden");
     document.getElementById("admin-dashboard-view")?.classList.remove("hidden");
     window.renderAdminDashboard();
-  } catch (err) {
-    console.error("Error Login Admin:", err.code, err.message);
+  } else {
     if (errorMsg) {
-      if (err.code === "auth/unauthorized-domain") {
-        errorMsg.textContent = "Dominio no autorizado en Firebase Authentication -> Settings -> Dominios autorizados.";
-      } else if (err.code === "auth/operation-not-allowed") {
-        errorMsg.textContent = "Activa 'Correo electrónico/contraseña' en Firebase Authentication -> Sign-in method.";
-      } else if (err.code === "auth/invalid-credential" || err.code === "auth/wrong-password" || err.code === "auth/user-not-found") {
-        errorMsg.textContent = "Clave incorrecta o usuario no creado aún en Firebase Authentication -> Users.";
-      } else {
-        errorMsg.textContent = `Error (${err.code}): ${err.message}`;
-      }
+      errorMsg.textContent = "Correo o contraseña incorrectos.";
       errorMsg.classList.remove("hidden");
     }
   }
@@ -400,12 +303,12 @@ window.renderAdminDashboard = function () {
   container.innerHTML = `
     <div class="flex flex-wrap justify-between items-center gap-2 pb-3 border-b border-white/10">
       <span class="text-sm font-bold text-slate-300">
-        Ventas en Nube: <strong class="text-amber-400">${allSales.length}</strong> |
+        Ventas Registradas: <strong class="text-amber-400">${allSales.length}</strong> |
         Tickets Vendidos: <strong class="text-emerald-400">${occupiedSet.size} / 10000</strong>
       </span>
     </div>
     <div class="space-y-3 mt-3">
-      ${allSales.length === 0 ? '<p class="text-center text-slate-400 text-sm py-6">Aún no hay ventas registradas en Firebase.</p>' : ''}
+      ${allSales.length === 0 ? '<p class="text-center text-slate-400 text-sm py-6">Aún no hay ventas registradas.</p>' : ''}
       ${allSales.map(s => `
         <div class="p-4 rounded-2xl bg-slate-900 border border-white/10 flex flex-col sm:flex-row justify-between gap-3 text-xs">
           <div>
@@ -424,21 +327,23 @@ window.renderAdminDashboard = function () {
   `;
 };
 
-window.approveSale = async function (id) {
-  try {
-    await updateDoc(doc(db, "ventas", id), { status: "aprobado" });
-    showToast("Pago aprobado en la nube");
-  } catch (err) {
-    alert("Error al aprobar: " + err.message);
+window.approveSale = function (id) {
+  const sale = allSales.find(s => s.id === id);
+  if (sale) {
+    sale.status = "aprobado";
+    localStorage.setItem("rifa_ventas_local", JSON.stringify(allSales));
+    window.renderAdminDashboard();
+    showToast("Pago aprobado");
   }
 };
 
-window.deleteSale = async function (id) {
+window.deleteSale = function (id) {
   if (!confirm("¿Seguro que deseas eliminar esta compra y liberar sus tickets?")) return;
-  try {
-    await deleteDoc(doc(db, "ventas", id));
-    showToast("Compra eliminada de la nube");
-  } catch (err) {
-    alert("Error al eliminar: " + err.message);
-  }
+  allSales = allSales.filter(s => s.id !== id);
+  localStorage.setItem("rifa_ventas_local", JSON.stringify(allSales));
+  rebuildOccupiedSet();
+  updateProgressUI();
+  updateLiveTicker();
+  window.renderAdminDashboard();
+  showToast("Compra eliminada");
 };
