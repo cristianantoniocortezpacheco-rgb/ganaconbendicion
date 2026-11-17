@@ -21,7 +21,7 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 
-// experimentalForceLongPolling evita bloqueos y demoras de WebSockets en redes móviles/CANTV
+// experimentalForceLongPolling evita bloqueos y demoras en redes móviles/CANTV
 const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 });
@@ -44,7 +44,7 @@ function rebuildOccupiedSet() {
   });
 }
 
-// Pintar interfaz en 0ms con caché mientras conecta a la nube
+// Pintar interfaz de inmediato con caché mientras conecta a la nube
 rebuildOccupiedSet();
 updateProgressUI();
 updateLiveTicker();
@@ -123,54 +123,72 @@ window.openPurchaseModal = function () {
     form.reset();
     form.classList.remove("hidden");
   }
-  if (receipt) receipt.classList.add("hidden");
-  document.getElementById("ticket-qty-input").value = 2;
+  if (receipt) {
+    receipt.classList.add("hidden");
+    receipt.style.display = "";
+  }
+  const qtyInput = document.getElementById("ticket-qty-input");
+  if (qtyInput) qtyInput.value = 2;
   window.updatePurchaseTotals();
 
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
 };
 
 window.closePurchaseModal = function () {
   const modal = document.getElementById("purchase-modal");
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
 };
 
 window.openDetailsModal = function () {
   const modal = document.getElementById("details-modal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
 };
 
 window.closeDetailsModal = function () {
   const modal = document.getElementById("details-modal");
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
 };
 
 window.openAdminModal = function () {
   const modal = document.getElementById("admin-modal");
-  modal.classList.remove("hidden");
-  modal.classList.add("flex");
+  if (modal) {
+    modal.classList.remove("hidden");
+    modal.classList.add("flex");
+  }
 };
 
 window.closeAdminModal = function () {
   const modal = document.getElementById("admin-modal");
-  modal.classList.add("hidden");
-  modal.classList.remove("flex");
+  if (modal) {
+    modal.classList.add("hidden");
+    modal.classList.remove("flex");
+  }
 };
 
 // =========================================================================
 // 5. CALCULADORA Y UTILIDADES
 // =========================================================================
 window.setTicketQty = function (amount) {
-  document.getElementById("ticket-qty-input").value = amount;
+  const input = document.getElementById("ticket-qty-input");
+  if (input) input.value = amount;
   window.updatePurchaseTotals();
 };
 
 window.changeTicketQty = function (delta) {
   const input = document.getElementById("ticket-qty-input");
+  if (!input) return;
   let current = parseInt(input.value, 10) || 1;
   current = Math.max(1, Math.min(500, current + delta));
   input.value = current;
@@ -179,7 +197,7 @@ window.changeTicketQty = function (delta) {
 
 window.updatePurchaseTotals = function () {
   const input = document.getElementById("ticket-qty-input");
-  let qty = parseInt(input.value, 10) || 1;
+  let qty = parseInt(input?.value, 10) || 1;
   if (qty < 1) qty = 1;
   const totalBs = (qty * TICKET_PRICE_BS).toLocaleString("es-VE");
   const label = document.getElementById("modal-total-bs");
@@ -201,22 +219,24 @@ function showToast(msg) {
 }
 
 // =========================================================================
-// 6. PROCESAR COMPRA DE TICKETS EN LA NUBE
+// 6. PROCESAR COMPRA DE TICKETS (RESPUESTA INSTANTÁNEA + SINCRONIZACIÓN)
 // =========================================================================
 window.submitPurchase = async function (event) {
   event.preventDefault();
   const btn = document.getElementById("submit-purchase-btn");
-  btn.disabled = true;
-  btn.textContent = "Guardando tickets...";
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Generando tickets...";
+  }
 
   try {
-    const qty = parseInt(document.getElementById("ticket-qty-input").value, 10);
-    const name = document.getElementById("buyer-name").value.trim();
-    const cedulaType = document.getElementById("buyer-cedula-type").value;
-    const cedula = document.getElementById("buyer-cedula").value.trim().replace(/\D/g, "");
-    const phone = document.getElementById("buyer-phone").value.trim();
-    const bank = document.getElementById("payment-bank").value;
-    const ref = document.getElementById("payment-ref").value.trim();
+    const qty = parseInt(document.getElementById("ticket-qty-input")?.value, 10) || 1;
+    const name = (document.getElementById("buyer-name")?.value || "").trim();
+    const cedulaType = document.getElementById("buyer-cedula-type")?.value || "V";
+    const cedula = (document.getElementById("buyer-cedula")?.value || "").trim().replace(/\D/g, "");
+    const phone = (document.getElementById("buyer-phone")?.value || "").trim();
+    const bank = document.getElementById("payment-bank")?.value || "Pago Móvil";
+    const ref = (document.getElementById("payment-ref")?.value || "").trim();
 
     if (TOTAL_TICKETS - occupiedSet.size < qty) {
       alert("No quedan suficientes tickets disponibles.");
@@ -245,23 +265,50 @@ window.submitPurchase = async function (event) {
       createdAt: serverTimestamp()
     };
 
-    await addDoc(collection(db, "ventas"), saleData);
+    // Guardar en Firebase con tiempo máximo de 6 segundos para evitar que se congele
+    await Promise.race([
+      addDoc(collection(db, "ventas"), saleData),
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error("Tiempo de espera agotado. Revisa tus reglas de Firestore o tu conexión.")), 6000)
+      )
+    ]);
 
-    document.getElementById("purchase-form").classList.add("hidden");
-    document.getElementById("purchase-receipt").classList.remove("hidden");
-    document.getElementById("receipt-tickets-grid").innerHTML = assigned
-      .map(num => `<span class="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 font-mono font-black text-amber-300 text-sm">${num}</span>`)
-      .join("");
+    // Actualizar memoria local al instante
+    assigned.forEach(t => occupiedSet.add(t));
+    updateProgressUI();
 
-    const msg = encodeURIComponent(`Hola Gana con Bendición, acabo de comprar ${qty} ticket(s).\nNombre: ${name}\nCédula: ${cedulaType}-${cedula}\nRef: ${ref}\nTickets: ${assigned.join(", ")}`);
-    document.getElementById("receipt-whatsapp-link").href = `https://wa.me/584125974816?text=${msg}`;
-    showToast("¡Tickets registrados con éxito!");
+    // Mostrar pantalla de comprobante con tickets asignados
+    const formEl = document.getElementById("purchase-form");
+    const receiptEl = document.getElementById("purchase-receipt");
+    const gridEl = document.getElementById("receipt-tickets-grid");
+    const waLinkEl = document.getElementById("receipt-whatsapp-link");
+
+    if (formEl) formEl.classList.add("hidden");
+    if (receiptEl) {
+      receiptEl.classList.remove("hidden");
+      receiptEl.style.display = "block";
+    }
+
+    if (gridEl) {
+      gridEl.innerHTML = assigned
+        .map(num => `<span class="px-3 py-1.5 rounded-xl bg-amber-500/20 border border-amber-400/40 font-mono font-black text-amber-300 text-sm">${num}</span>`)
+        .join("");
+    }
+
+    if (waLinkEl) {
+      const msg = encodeURIComponent(`Hola Gana con Bendición, acabo de comprar ${qty} ticket(s).\nNombre: ${name}\nCédula: ${cedulaType}-${cedula}\nRef: ${ref}\nTickets: ${assigned.join(", ")}`);
+      waLinkEl.href = `https://wa.me/584125974816?text=${msg}`;
+    }
+
+    showToast("¡Tickets generados con éxito!");
   } catch (err) {
-    console.error("Error guardando venta:", err);
-    alert(`No se pudo guardar (${err.code}): ${err.message}`);
+    console.error("Error al comprar:", err);
+    alert(`No se pudo completar la compra: ${err.message}`);
   } finally {
-    btn.disabled = false;
-    btn.textContent = "Confirmar Compra y Generar Tickets";
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = "Confirmar Compra y Generar Tickets";
+    }
   }
 };
 
@@ -270,9 +317,9 @@ window.submitPurchase = async function (event) {
 // =========================================================================
 window.handleVerifySearch = function (event) {
   event.preventDefault();
-  const rawQuery = document.getElementById("verify-input").value.trim().replace(/\D/g, "");
+  const rawQuery = (document.getElementById("verify-input")?.value || "").trim().replace(/\D/g, "");
   const resultsBox = document.getElementById("verify-results");
-  if (!rawQuery) return;
+  if (!rawQuery || !resultsBox) return;
 
   resultsBox.classList.remove("hidden");
 
@@ -311,8 +358,8 @@ window.handleVerifySearch = function (event) {
 // =========================================================================
 window.handleAdminLogin = async function (event) {
   if (event) event.preventDefault();
-  const email = document.getElementById("admin-email-input").value.trim().toLowerCase();
-  const pass = document.getElementById("admin-password-input").value;
+  const email = (document.getElementById("admin-email-input")?.value || "").trim().toLowerCase();
+  const pass = document.getElementById("admin-password-input")?.value || "";
   const errorMsg = document.getElementById("admin-login-error");
 
   if (email !== "cp1255747@gmail.com") {
@@ -326,8 +373,8 @@ window.handleAdminLogin = async function (event) {
   try {
     await signInWithEmailAndPassword(auth, email, pass);
     if (errorMsg) errorMsg.classList.add("hidden");
-    document.getElementById("admin-login-view").classList.add("hidden");
-    document.getElementById("admin-dashboard-view").classList.remove("hidden");
+    document.getElementById("admin-login-view")?.classList.add("hidden");
+    document.getElementById("admin-dashboard-view")?.classList.remove("hidden");
     window.renderAdminDashboard();
   } catch (err) {
     console.error("Error Login Admin:", err.code, err.message);
